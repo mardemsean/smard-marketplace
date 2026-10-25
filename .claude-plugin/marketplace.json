@@ -1,0 +1,14 @@
+{
+  "name": "smard-marketplace",
+  "owner": {
+    "name": "Sean Mardem"
+  },
+  "plugins": [
+    {
+      "name": "smard-arsenal-gate",
+      "source": "./plugins/smard-arsenal-gate",
+      "description": "Deterministic enforcement layer (hooks only, no LLM): routes each prompt to the skills/connectors it requires, denies Edit/Write and file-writing shell commands until they were consulted, breaks repeated-error loops by error signature, and blocks completion without a verification command.",
+      "version": "0.1.1"
+    }
+  ]
+}

@@ -1,0 +1,87 @@
+{
+  "$comment": "Routing table of the SMard Arsenal Gate. Edit freely; the gate reloads it on every hook call. A route fires when the prompt matches any `prompt` regex, when an edited file matches any `paths` regex, or when a Bash command matches any `bash` regex. While a fired route is unsatisfied, the tools listed in `gate` are denied; `requires.any_of` is satisfied by invoking any one of the listed skills (Skill tool) or calling any one of the listed tools. Set `gate` to [] for advisory-only routes (context injected, nothing denied).",
+  "routes": [
+    {
+      "id": "method",
+      "title": "SMard method (requirement, ADR, spec, delegation, PR, handoff)",
+      "prompt": ["\\brequisit", "\\brequirement", "\\bADR\\b", "\\bspec", "especific", "\\bdeleg", "handoff", "\\bPR\\b", "pull request", "\\brelease\\b", "ratific", "REQUIREMENT-ZERO", "bridge", "converg"],
+      "paths": ["docs/(requirements|adr|specs|drafts)/", "REQUIREMENT", "HANDOFF\\."],
+      "requires": { "any_of": ["smard-agent-flow:method", "smard-agent-flow:specify", "smard-agent-flow:preflight", "smard-agent-flow:tasks", "smard-agent-flow:converge", "smard-agent-flow:handoff", "smard-agent-flow:coordinate"] },
+      "gate": ["Edit", "Write", "MultiEdit"]
+    },
+    {
+      "id": "postgres",
+      "title": "PostgreSQL / pgvector work consults pg-aiguide first",
+      "prompt": ["postgres", "pgvector", "pgTAP", "pg_prove", "\\bmigra[cç][aã]o", "\\bmigration", "\\bRLS\\b", "row.level security", "\\bpsql\\b", "\\bHNSW\\b", "IVFFlat", "\\bschema\\b", "\\bíndice", "\\.sql\\b", "\\bindex(es)?\\b.*(tabela|table|coluna|column)"],
+      "paths": ["\\.sql$", "migrations?/", "pgtap", "sdi_"],
+      "bash": ["\\bpsql\\b", "pg_prove", "pg_dump", "pg_restore"],
+      "requires": { "any_of": ["mcp__pg-aiguide__search_docs", "mcp__pg-aiguide__view_skill"] },
+      "gate": ["Edit", "Write", "MultiEdit"]
+    },
+    {
+      "id": "rust",
+      "title": "Rust engine work goes through the Rust CLI skills",
+      "prompt": ["\\bcargo\\b", "\\brust\\b", "\\bcrate", "tree-sitter", "tantivy", "lancedb", "petgraph", "fastembed", "\\brmcp\\b", "usearch", "\\.rs\\b", "\\bfn\\s+main"],
+      "paths": ["\\.rs$", "Cargo\\.(toml|lock)$"],
+      "bash": ["\\bcargo\\s+(build|test|run|clippy|check)"],
+      "requires": { "any_of": ["rust-cli-skills:rust-implement", "rust-cli-skills:rust-design", "rust-cli-skills:rust-debugging", "rust-cli-skills:rust-testing", "rust-cli-skills:rust-build", "rust-cli-skills:rust-errors", "rust-cli-skills:rust-io", "rust-cli-skills:rust-concurrency", "rust-cli-skills:rust-performance"] },
+      "gate": ["Edit", "Write", "MultiEdit"]
+    },
+    {
+      "id": "codegen",
+      "title": "Hot-path, codegen or performance claims about Rust/C/C++ are checked in Compiler Explorer before editing",
+      "prompt": ["\\bassembly\\b", "\\basm\\b", "codegen", "\\bSIMD\\b", "vectori[sz]", "intrins", "opt-level", "target-cpu", "hot ?path", "caminho quente", "branchless", "\\binline\\b.*(fn|função|function)", "\\blatenc", "\\bthroughput", "\\bbenchmark\\b.*(rust|fn|kernel)", "instru[cç][aã]o.*(x86|arm|avx|sse)"],
+      "requires": { "any_of": ["mcp__Compiler_Explorer__compile", "mcp__Compiler_Explorer__lookup_asm_instruction", "mcp__Compiler_Explorer__list_compilers"] },
+      "gate": ["Edit", "Write", "MultiEdit"]
+    },
+    {
+      "id": "agent-config",
+      "title": "Skills, hooks, plugins and agents are edited with the plugin-dev / writing-skills skills",
+      "prompt": ["\\bhook", "\\bplugin", "SKILL\\.md", "\\bskill", "subagent", "\\bagente?s?\\b.*(config|defini|cri)", "hooks\\.json", "plugin\\.json", "marketplace"],
+      "paths": ["SKILL\\.md$", "hooks\\.json$", "plugin\\.json$", "marketplace\\.json$", "\\.claude-plugin/", "/agents/.*\\.md$"],
+      "requires": { "any_of": ["plugin-dev:hook-development", "plugin-dev:plugin-structure", "plugin-dev:skill-development", "plugin-dev:agent-development", "superpowers:writing-skills", "anthropic-skills:skill-creator"] },
+      "gate": ["Edit", "Write", "MultiEdit"]
+    },
+    {
+      "id": "debug",
+      "title": "A reported failure is debugged systematically before anything is edited",
+      "prompt": ["\\bbug\\b", "\\berro\\b", "\\berror\\b", "\\bfalh", "\\bfail", "quebr", "broken", "stack ?trace", "n[aã]o funciona", "not working", "exception", "panic"],
+      "requires": { "any_of": ["superpowers:systematic-debugging", "agent-debugging:agent-incident-diagnose", "agent-debugging:agent-failure-repair"] },
+      "gate": ["Edit", "Write", "MultiEdit"]
+    },
+    {
+      "id": "design-gate",
+      "title": "New work starts with brainstorming (advisory: context only, nothing denied)",
+      "prompt": ["\\bimplement", "\\bconstru", "\\bbuild\\b", "\\bcriar\\b", "\\bcreate\\b", "nova feature", "new feature", "\\bdesenvolv"],
+      "requires": { "any_of": ["superpowers:brainstorming", "superpowers:writing-plans", "feature-dev:feature-dev"] },
+      "gate": []
+    }
+  ],
+  "error_loop": {
+    "$comment": "Same error signature (tool + normalized message) repeated in one session. At `warn` the gate injects a stop-and-diagnose instruction; at `block` it denies the failing tool until one of `requires` was invoked.",
+    "warn": 2,
+    "block": 3,
+    "requires": { "any_of": ["superpowers:systematic-debugging", "agent-debugging:agent-incident-diagnose"] }
+  },
+  "stop_gate": {
+    "$comment": "If files were edited and no verification command ran since the last edit, the Stop is blocked (at most `max_blocks` times per session, then it passes with a warning).",
+    "enabled": true,
+    "verify_bash": ["\\bcargo\\s+(test|check|clippy|build)", "\\brustc\\b", "\\bpytest\\b", "pg_prove", "run-s\\d+\\.ps1", "mutate-s\\d+\\.ps1", "\\bnpm\\s+(test|run\\s+(test|build|verify))", "\\bnode\\b.*\\btest", "\\bgo\\s+test", "\\bverify", "pgTAP", "\\bmake\\s+(test|check)"],
+    "max_blocks": 2
+  },
+  "reply_prefix": {
+    "$comment": "Optional: require the first line of every final reply to start with `prefix` (e.g. the HANDSHAKE gate line). Off by default; the project turns it on.",
+    "enabled": false,
+    "prefix": "HANDSHAKE:",
+    "max_blocks": 1
+  },
+  "session_banner": {
+    "$comment": "Short index injected at SessionStart. Keep under 40 lines; this is what replaces long always-on instruction blocks.",
+    "lines": [
+      "SMARD ARSENAL GATE is active in this session (deterministic hooks, no LLM).",
+      "Rules it enforces: (1) prompts matching a route must invoke one of that route's skills/tools BEFORE Edit/Write; the gate denies the edit otherwise and names the skill. (2) The same error repeated 2x triggers a mandatory systematic-debugging stop; 3x denies the failing tool until debugging was invoked. (3) Stopping after edits without a verification command is blocked.",
+      "Invoke skills with the Skill tool using the exact name shown in the denial reason. The denial reason is the instruction; do not argue with it, satisfy it.",
+      "To see routes and state: Skill arsenal-gate (user-invocable /arsenal-gate)."
+    ]
+  }
+}

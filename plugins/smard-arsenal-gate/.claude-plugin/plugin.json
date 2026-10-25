@@ -1,0 +1,11 @@
+{
+  "name": "smard-arsenal-gate",
+  "displayName": "SMard Arsenal Gate",
+  "description": "Deterministic enforcement layer: routes each prompt to the skills and tools it requires, denies edits until they were consulted, breaks repeated-error loops, and blocks completion without verification. Hooks only; no LLM calls.",
+  "version": "0.1.1",
+  "author": { "name": "Sean Mardem / SMard Labs" },
+  "license": "MIT",
+  "keywords": ["hooks", "enforcement", "skills", "error-loop", "verification"],
+  "hooks": "./hooks/hooks.json",
+  "skills": "./skills/"
+}
